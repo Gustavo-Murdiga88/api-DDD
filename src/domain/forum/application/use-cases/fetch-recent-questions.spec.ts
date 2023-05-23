@@ -1,36 +1,47 @@
-import { QuestionInMemoryRepository } from 'test/repositories/question-inMemory-repository copy'
-import { makeQuestion } from 'test/factories/make-create-quesiton'
-import { FetchRecentQuestionCase } from './fetch-recent-questions'
+import { InMemoryQuestionsRepository } from 'test/repositories/in-memory-questions-repository'
+import { makeQuestion } from 'test/factories/make-question'
+import { FetchRecentQuestionsUseCase } from './fetch-recent-questions'
 
-let fetchRecentQuestionCase: FetchRecentQuestionCase
+let inMemoryQuestionsRepository: InMemoryQuestionsRepository
+let sut: FetchRecentQuestionsUseCase
 
-let sut: QuestionInMemoryRepository
-
-describe('suit tests for find recent questions created', async () => {
+describe('Fetch Recent Questions', () => {
   beforeEach(() => {
-    sut = new QuestionInMemoryRepository()
-    fetchRecentQuestionCase = new FetchRecentQuestionCase(sut)
+    inMemoryQuestionsRepository = new InMemoryQuestionsRepository()
+    sut = new FetchRecentQuestionsUseCase(inMemoryQuestionsRepository)
   })
 
-  it('delete an question with same author', async () => {
-    await sut.create(makeQuestion({ createdAt: new Date(2023, 4, 19) }))
-    await sut.create(makeQuestion({ createdAt: new Date(2023, 4, 15) }))
-    await sut.create(makeQuestion({ createdAt: new Date(2023, 4, 18) }))
+  it('should be able to fetch recent questions', async () => {
+    await inMemoryQuestionsRepository.create(
+      makeQuestion({ createdAt: new Date(2022, 0, 20) }),
+    )
+    await inMemoryQuestionsRepository.create(
+      makeQuestion({ createdAt: new Date(2022, 0, 18) }),
+    )
+    await inMemoryQuestionsRepository.create(
+      makeQuestion({ createdAt: new Date(2022, 0, 23) }),
+    )
 
-    const { questions } = await fetchRecentQuestionCase.execute({
+    const result = await sut.execute({
       page: 1,
     })
 
-    expect(questions).toEqual([
-      expect.objectContaining({
-        createdAt: new Date(2023, 4, 19),
-      }),
-      expect.objectContaining({
-        createdAt: new Date(2023, 4, 18),
-      }),
-      expect.objectContaining({
-        createdAt: new Date(2023, 4, 15),
-      }),
+    expect(result.value?.questions).toEqual([
+      expect.objectContaining({ createdAt: new Date(2022, 0, 23) }),
+      expect.objectContaining({ createdAt: new Date(2022, 0, 20) }),
+      expect.objectContaining({ createdAt: new Date(2022, 0, 18) }),
     ])
+  })
+
+  it('should be able to fetch paginated recent questions', async () => {
+    for (let i = 1; i <= 22; i++) {
+      await inMemoryQuestionsRepository.create(makeQuestion())
+    }
+
+    const result = await sut.execute({
+      page: 2,
+    })
+
+    expect(result.value?.questions).toHaveLength(2)
   })
 })
